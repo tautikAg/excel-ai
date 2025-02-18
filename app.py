@@ -259,14 +259,39 @@ def main():
             
             # AI Assistant Section
             st.header("AI Assistant")
-            user_query = st.text_area("Describe what columns or flags you want to create:", 
-                placeholder="e.g., 'I want a new column showing twice the price and flag items with quantity less than 20'")
-            
+
+            # Add example suggestions in a collapsible section
+            with st.expander("See example operations you can request"):
+                st.markdown("""
+                **Example requests you can try:**
+                
+                1. "Calculate total revenue by multiplying price and quantity, and flag items with revenue above $1000"
+                2. "Create a discount column that's 10% of the price, and flag items where quantity is less than 5"
+                3. "Add a profit margin column that's 20% of the price, and flag items where margin is below $10"
+                4. "Create a shipping cost column based on weight (weight * 2), and flag heavy items above 50kg"
+                5. "Calculate price per unit by dividing total price by quantity, and flag items where unit price > $100"
+                """)
+
+            user_query = st.text_area(
+                "Describe what columns or flags you want to create:", 
+                placeholder="e.g., 'Calculate total revenue by multiplying price and quantity, and flag items with revenue above $1000'"
+            )
+
+            # Add a "Try Example" button
+            if st.button("Try an Example Query"):
+                example_query = "Calculate total revenue by multiplying price and quantity, and flag items with revenue above $1000"
+                # Update the text area with the example query
+                st.session_state['example_query'] = example_query
+                user_query = example_query
+
             if st.button("Get AI Suggestions"):
                 if user_query:
-                    suggestions = st.session_state.processor.suggest_operations(user_query)
-                    # Store suggestions in session state
-                    st.session_state.suggestions = suggestions
+                    with st.spinner("Generating suggestions..."):
+                        suggestions = st.session_state.processor.suggest_operations(user_query)
+                        # Store suggestions in session state
+                        st.session_state.suggestions = suggestions
+                else:
+                    st.warning("Please enter a query or try an example query first.")
             
             # Show suggestions if they exist in session state
             if hasattr(st.session_state, 'suggestions') and st.session_state.suggestions:
