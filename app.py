@@ -1,8 +1,85 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from typing import Optional
+from typing import Optional, List
 import re
+from litellm import completion
+from pydantic import BaseModel
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+class DerivedColumn(BaseModel):
+    name: str
+    formula: str
+    description: str
+
+class FlagRule(BaseModel):
+    rule: str
+    description: str
+
+class AnalysisSuggestions(BaseModel):
+    derived_columns: List[DerivedColumn]
+    flag_rules: List[FlagRule]
+
+class AIHelper:
+    def __init__(self):
+        self.api_key = os.getenv('GOOGLE_API_KEY')
+        
+    def get_suggestions(self, query: str, columns: list) -> dict:
+        """Get AI suggestions for derived columns and flag rules"""
+        try:
+            prompt = f"""Given these columns: {', '.join(columns)}
+            And user query: "{query}"
+            You are a data analysis expert. Based on the user's query, suggest derived columns and flag rules.
+            Provide suggestions using valid pandas operations."""
+            
+            st.write("Sending prompt to LLM:", prompt)
+            
+            response = completion(
+                model="gemini/gemini-1.5-pro",
+                messages=[{"role": "user", "content": prompt}],
+                api_key=self.api_key,
+                response_format=AnalysisSuggestions
+            )
+            
+            st.write("Raw response from LLM:", response)
+            st.write("Response type:", type(response))
+            
+            # Get the content from response
+            content = response.choices[0].message.content
+            st.write("Content from response:", content)
+            st.write("Content type:", type(content))
+            
+            # Try parsing as JSON if it's a string
+            if isinstance(content, str):
+                try:
+                    import json
+                    suggestions = json.loads(content)
+                    st.write("Parsed JSON:", suggestions)
+                except json.JSONDecodeError as e:
+                    st.error(f"Failed to parse JSON: {str(e)}")
+                    return {"derived_columns": [], "flag_rules": []}
+            else:
+                suggestions = content
+            
+            # Validate against our Pydantic model
+            try:
+                validated_suggestions = AnalysisSuggestions(**suggestions)
+                st.write("Validated suggestions:", validated_suggestions)
+                return validated_suggestions.model_dump()
+            except Exception as e:
+                st.error(f"Failed to validate suggestions: {str(e)}")
+                return {"derived_columns": [], "flag_rules": []}
+            
+        except Exception as e:
+            st.error(f"Error getting AI suggestions: {str(e)}")
+            st.error(f"Error type: {type(e)}")
+            import traceback
+            st.error(f"Traceback: {traceback.format_exc()}")
+            return {"derived_columns": [], "flag_rules": []}
 
 class ExcelProcessor:
     def __init__(self):
@@ -69,6 +146,14 @@ class ExcelProcessor:
         """Get list of current column names"""
         return list(self.df.columns) if self.df is not None else []
 
+    def suggest_operations(self, query: str) -> dict:
+        """Get AI suggestions for operations"""
+        if not hasattr(self, 'ai_helper'):
+            self.ai_helper = AIHelper()
+        
+        columns = self.get_column_names()
+        return self.ai_helper.get_suggestions(query, columns)
+
 def main():
     st.set_page_config(
         page_title="Excel Data Processor",
@@ -111,6 +196,35 @@ def main():
             if st.button("Crop to Selection"):
                 if st.session_state.processor.crop_selection(start_row, end_row):
                     st.success("Data cropped successfully!")
+            
+            # AI Assistant Section
+            st.header("AI Assistant")
+            user_query = st.text_area("Describe what columns or flags you want to create:", 
+                placeholder="e.g., 'I want a new column showing twice the price and flag items with quantity less than 20'")
+            
+            if st.button("Get AI Suggestions"):
+                if user_query:
+                    suggestions = st.session_state.processor.suggest_operations(user_query)
+                    
+                    # Show Derived Column Suggestions
+                    if suggestions["derived_columns"]:
+                        st.subheader("Suggested Derived Columns")
+                        for idx, col in enumerate(suggestions["derived_columns"]):
+                            with st.expander(f"{col['name']}: {col['description']}"):
+                                st.write(f"Formula: `{col['formula']}`")
+                                if st.button("Apply This Column", key=f"col_{idx}"):
+                                    if st.session_state.processor.add_derived_column(col['name'], col['formula']):
+                                        st.success(f"Added column: {col['name']}")
+                    
+                    # Show Flag Rule Suggestions
+                    if suggestions["flag_rules"]:
+                        st.subheader("Suggested Flag Rules")
+                        for idx, flag in enumerate(suggestions["flag_rules"]):
+                            with st.expander(f"Flag: {flag['description']}"):
+                                st.write(f"Rule: `{flag['rule']}`")
+                                if st.button("Apply This Rule", key=f"flag_{idx}"):
+                                    if st.session_state.processor.add_flag_rule(flag['rule']):
+                                        st.success(f"Added flag rule: {flag['rule']}")
             
             # Derived Columns Section
             st.header("2. Create Derived Columns")

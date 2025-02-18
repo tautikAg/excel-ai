@@ -1,3 +1,15 @@
+# Core dependencies
+streamlit==1.42.1
+pandas==2.2.3
+numpy==2.2.3
+openpyxl==3.1.5
+
+# AI/LLM dependencies
+litellm>=1.24.0
+pydantic>=2.0.0
+python-dotenv==1.0.0
+
+# Streamlit dependencies
 altair==5.5.0
 attrs==25.1.0
 blinker==1.9.0
@@ -16,10 +28,7 @@ markdown-it-py==3.0.0
 MarkupSafe==3.0.2
 mdurl==0.1.2
 narwhals==1.27.1
-numpy==2.2.3
-openpyxl==3.1.5
 packaging==24.2
-pandas==2.2.3
 pillow==11.1.0
 protobuf==5.29.3
 pyarrow==19.0.0
@@ -34,7 +43,6 @@ rpds-py==0.22.3
 setuptools==75.8.0
 six==1.17.0
 smmap==5.0.2
-streamlit==1.42.1
 tenacity==9.0.0
 toml==0.10.2
 tornado==6.4.2
