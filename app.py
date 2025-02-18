@@ -9,6 +9,7 @@ class ExcelProcessor:
         self.df: Optional[pd.DataFrame] = None
         self.column_history = []
         self.rule_history = []
+        self.selected_rows = None
     
     def load_excel(self, file):
         """Load Excel file into DataFrame"""
@@ -18,6 +19,13 @@ class ExcelProcessor:
         except Exception as e:
             st.error(f"Error loading file: {str(e)}")
             return False
+    
+    def crop_selection(self, start_row, end_row):
+        """Crop DataFrame to selected rows"""
+        if self.df is not None:
+            self.df = self.df.iloc[start_row:end_row+1].copy()
+            return True
+        return False
     
     def add_derived_column(self, column_name: str, formula: str) -> bool:
         """Add a new derived column based on formula"""
@@ -82,13 +90,35 @@ def main():
         if st.session_state.processor.load_excel(uploaded_file):
             st.success("File loaded successfully!")
             
-            # Display original data
-            st.subheader("Original Data Preview")
-            st.dataframe(st.session_state.processor.df.head())
+            # Data Preview with Row Selection
+            st.subheader("Data Preview")
+            st.write("Select rows by dragging the slider:")
+            
+            # Row selection slider
+            row_count = len(st.session_state.processor.df)
+            start_row, end_row = st.select_slider(
+                "Select row range",
+                options=range(row_count),
+                value=(0, row_count-1),
+                key="row_range"
+            )
+            
+            # Display selected data
+            preview_df = st.session_state.processor.df.iloc[start_row:end_row+1]
+            st.dataframe(preview_df)
+            
+            # Crop button
+            if st.button("Crop to Selection"):
+                if st.session_state.processor.crop_selection(start_row, end_row):
+                    st.success("Data cropped successfully!")
             
             # Derived Columns Section
             st.header("2. Create Derived Columns")
             
+            # Available columns display
+            st.info("Available columns: " + ", ".join(st.session_state.processor.get_column_names()))
+            
+            # Formula input
             col1, col2, col3 = st.columns([2, 3, 1])
             with col1:
                 new_col_name = st.text_input("Column Name", key="new_col_name")
