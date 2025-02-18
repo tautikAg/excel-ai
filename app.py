@@ -209,6 +209,32 @@ class ExcelProcessor:
         self.suggestions = self.ai_helper.get_suggestions(query, columns)
         return self.suggestions
 
+    def remove_derived_column(self, column_name: str) -> bool:
+        """Remove a derived column"""
+        try:
+            if column_name in self.df.columns:
+                self.df = self.df.drop(columns=[column_name])
+                # Remove from history
+                self.column_history = [col for col in self.column_history if col['name'] != column_name]
+                return True
+            return False
+        except Exception as e:
+            st.error(f"Error removing column: {str(e)}")
+            return False
+
+    def remove_flag_rule(self, rule: str) -> bool:
+        """Remove a flag rule and its corresponding column"""
+        try:
+            flag_col = f"Flag_{rule}"
+            if flag_col in self.df.columns:
+                self.df = self.df.drop(columns=[flag_col])
+            # Remove from history
+            self.rule_history = [r for r in self.rule_history if r != rule]
+            return True
+        except Exception as e:
+            st.error(f"Error removing flag rule: {str(e)}")
+            return False
+
 def main():
     logger = AppLogger()
     logger.info("Application started")
@@ -349,8 +375,18 @@ def main():
             # Display column history
             if st.session_state.processor.column_history:
                 st.subheader("Created Columns")
-                for col in st.session_state.processor.column_history:
-                    st.code(f"{col['name']} = {col['formula']}")
+                for idx, col in enumerate(st.session_state.processor.column_history):
+                    col1, col2 = st.columns([5, 1])
+                    with col1:
+                        st.code(f"{col['name']} = {col['formula']}")
+                    with col2:
+                        if st.button("❌", key=f"remove_col_{idx}"):
+                            # Remove column from DataFrame
+                            if col['name'] in st.session_state.processor.df.columns:
+                                st.session_state.processor.df = st.session_state.processor.df.drop(columns=[col['name']])
+                            # Remove from history
+                            st.session_state.processor.column_history.pop(idx)
+                            st.rerun()
             
             # Flagging Rules Section
             st.header("3. Define Flag Rules")
@@ -367,8 +403,19 @@ def main():
             # Display rule history
             if st.session_state.processor.rule_history:
                 st.subheader("Applied Rules")
-                for rule in st.session_state.processor.rule_history:
-                    st.code(rule)
+                for idx, rule in enumerate(st.session_state.processor.rule_history):
+                    col1, col2 = st.columns([5, 1])
+                    with col1:
+                        st.code(rule)
+                    with col2:
+                        if st.button("❌", key=f"remove_rule_{idx}"):
+                            # Remove flag column from DataFrame
+                            flag_col = f"Flag_{rule}"
+                            if flag_col in st.session_state.processor.df.columns:
+                                st.session_state.processor.df = st.session_state.processor.df.drop(columns=[flag_col])
+                            # Remove from history
+                            st.session_state.processor.rule_history.pop(idx)
+                            st.rerun()
             
             # Final Results
             if st.session_state.processor.df is not None:
