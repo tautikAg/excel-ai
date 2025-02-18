@@ -1,0 +1,142 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+from typing import Optional
+import re
+
+class ExcelProcessor:
+    def __init__(self):
+        self.df: Optional[pd.DataFrame] = None
+        self.column_history = []
+        self.rule_history = []
+    
+    def load_excel(self, file):
+        """Load Excel file into DataFrame"""
+        try:
+            self.df = pd.read_excel(file)
+            return True
+        except Exception as e:
+            st.error(f"Error loading file: {str(e)}")
+            return False
+    
+    def add_derived_column(self, column_name: str, formula: str) -> bool:
+        """Add a new derived column based on formula"""
+        try:
+            # Clean the formula
+            formula = formula.strip()
+            
+            # Evaluate the formula
+            self.df[column_name] = self.df.eval(formula)
+            
+            # Store in history
+            self.column_history.append({
+                "name": column_name,
+                "formula": formula
+            })
+            return True
+        except Exception as e:
+            st.error(f"Error creating derived column: {str(e)}")
+            return False
+    
+    def add_flag_rule(self, rule: str) -> bool:
+        """Add a new flag based on rule condition"""
+        try:
+            # Clean the rule
+            rule = rule.strip()
+            
+            # Create flag column name
+            flag_name = f"Flag_{rule}"
+            
+            # Evaluate the rule
+            self.df[flag_name] = self.df.eval(rule)
+            
+            # Store in history
+            self.rule_history.append(rule)
+            return True
+        except Exception as e:
+            st.error(f"Error applying flag rule: {str(e)}")
+            return False
+    
+    def get_column_names(self) -> list:
+        """Get list of current column names"""
+        return list(self.df.columns) if self.df is not None else []
+
+def main():
+    st.set_page_config(
+        page_title="Excel Data Processor",
+        page_icon="📊",
+        layout="wide"
+    )
+    
+    st.title("📊 Excel Data Processor")
+    
+    # Initialize processor
+    if 'processor' not in st.session_state:
+        st.session_state.processor = ExcelProcessor()
+    
+    # File upload section
+    st.header("1. Upload Excel File")
+    uploaded_file = st.file_uploader("Choose an Excel file", type=['xlsx', 'xls'])
+    
+    if uploaded_file:
+        if st.session_state.processor.load_excel(uploaded_file):
+            st.success("File loaded successfully!")
+            
+            # Display original data
+            st.subheader("Original Data Preview")
+            st.dataframe(st.session_state.processor.df.head())
+            
+            # Derived Columns Section
+            st.header("2. Create Derived Columns")
+            
+            col1, col2, col3 = st.columns([2, 3, 1])
+            with col1:
+                new_col_name = st.text_input("Column Name", key="new_col_name")
+            with col2:
+                formula = st.text_input("Formula (e.g., Price * Quantity)", key="formula")
+            with col3:
+                if st.button("Add Column"):
+                    if new_col_name and formula:
+                        if st.session_state.processor.add_derived_column(new_col_name, formula):
+                            st.success(f"Added column: {new_col_name}")
+            
+            # Display column history
+            if st.session_state.processor.column_history:
+                st.subheader("Created Columns")
+                for col in st.session_state.processor.column_history:
+                    st.code(f"{col['name']} = {col['formula']}")
+            
+            # Flagging Rules Section
+            st.header("3. Define Flag Rules")
+            
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                rule = st.text_input("Rule (e.g., Price > 100)", key="rule")
+            with col2:
+                if st.button("Add Rule"):
+                    if rule:
+                        if st.session_state.processor.add_flag_rule(rule):
+                            st.success(f"Added flag for rule: {rule}")
+            
+            # Display rule history
+            if st.session_state.processor.rule_history:
+                st.subheader("Applied Rules")
+                for rule in st.session_state.processor.rule_history:
+                    st.code(rule)
+            
+            # Final Results
+            if st.session_state.processor.df is not None:
+                st.header("4. Processed Data")
+                st.dataframe(st.session_state.processor.df)
+                
+                # Export button
+                if st.download_button(
+                    label="Download Processed Data",
+                    data=st.session_state.processor.df.to_csv(index=False).encode('utf-8'),
+                    file_name="processed_data.csv",
+                    mime="text/csv"
+                ):
+                    st.success("Data downloaded successfully!")
+
+if __name__ == "__main__":
+    main() 
