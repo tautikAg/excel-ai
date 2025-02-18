@@ -48,21 +48,6 @@ class ExcelProcessor:
             self.logger.error(f"Error cropping data: {str(e)}")
             return False
 
-    def add_derived_column(self, column_name: str, formula: str) -> bool:
-        """Add a new derived column based on formula"""
-        try:
-            formula = formula.strip()
-            self.df[column_name] = self.df.eval(formula)
-            self.column_history.append({
-                "name": column_name,
-                "formula": formula
-            })
-            self.logger.info(f"Added column: {column_name} = {formula}")
-            return True
-        except Exception as e:
-            self.logger.error(f"Error creating column: {str(e)}")
-            return False
-
     def remove_derived_column(self, column_name: str) -> bool:
         """Remove a derived column"""
         try:
@@ -79,18 +64,6 @@ class ExcelProcessor:
             self.logger.error(f"Error removing column: {str(e)}")
             return False
 
-    def add_flag_rule(self, rule: str) -> bool:
-        """Add a new flag based on rule condition"""
-        try:
-            rule = rule.strip()
-            flag_col = f"Flag_{rule}"
-            self.df[flag_col] = self.df.eval(rule)
-            self.rule_history.append(rule)
-            self.logger.info(f"Added flag rule: {rule}")
-            return True
-        except Exception as e:
-            self.logger.error(f"Error adding flag rule: {str(e)}")
-            return False
 
     def remove_flag_rule(self, rule: str) -> bool:
         """Remove a flag rule and its column"""
