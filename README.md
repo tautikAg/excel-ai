@@ -2,8 +2,8 @@
 
 A powerful Streamlit-based application for processing Excel files with AI-powered suggestions for data analysis. This tool allows users to upload Excel files, create derived columns, and define flag rules with the assistance of AI suggestions.
 
-##System Design Doc:
-(https://docs.google.com/document/d/1GPcOYBDlOM6ZyYZLHkt7jJ1CWcIAbjOxqd4Qt-6rPy4/edit?usp=sharing)[https://docs.google.com/document/d/1GPcOYBDlOM6ZyYZLHkt7jJ1CWcIAbjOxqd4Qt-6rPy4/edit?usp=sharing]
+## System Design Doc:
+[System Design Document](https://docs.google.com/document/d/1GPcOYBDlOM6ZyYZLHkt7jJ1CWcIAbjOxqd4Qt-6rPy4/edit?usp=sharing)
 
 ## 🌟 Features
 
