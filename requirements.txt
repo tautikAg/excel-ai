@@ -6,7 +6,7 @@ openpyxl==3.1.5
 
 # AI/LLM dependencies
 litellm>=1.24.0
-pydantic>=2.0.0
+pydantic>=2.5.0
 python-dotenv==1.0.0
 
 # Streamlit dependencies

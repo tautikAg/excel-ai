@@ -4,7 +4,7 @@ import numpy as np
 from typing import Optional, List
 import re
 from litellm import completion
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import os
 from dotenv import load_dotenv
 
@@ -12,15 +12,21 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class DerivedColumn(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    
     name: str
     formula: str
     description: str
 
 class FlagRule(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    
     rule: str
     description: str
 
 class AnalysisSuggestions(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    
     derived_columns: List[DerivedColumn]
     flag_rules: List[FlagRule]
 
@@ -34,7 +40,16 @@ class AIHelper:
             prompt = f"""Given these columns: {', '.join(columns)}
             And user query: "{query}"
             You are a data analysis expert. Based on the user's query, suggest derived columns and flag rules.
-            Provide suggestions using valid pandas operations."""
+            Provide suggestions in this exact JSON format:
+            {{
+                "derived_columns": [
+                    {{"name": "example_name", "formula": "example_formula", "description": "what this does"}}
+                ],
+                "flag_rules": [
+                    {{"rule": "example_rule", "description": "what this flags"}}
+                ]
+            }}
+            Use valid pandas operations and ensure the JSON is properly formatted."""
             
             st.write("Sending prompt to LLM:", prompt)
             
@@ -42,18 +57,16 @@ class AIHelper:
                 model="gemini/gemini-1.5-pro",
                 messages=[{"role": "user", "content": prompt}],
                 api_key=self.api_key,
-                response_format=AnalysisSuggestions
+                response_format={"type": "json_object"}  # Specify JSON response format
             )
             
             st.write("Raw response from LLM:", response)
-            st.write("Response type:", type(response))
             
             # Get the content from response
             content = response.choices[0].message.content
             st.write("Content from response:", content)
-            st.write("Content type:", type(content))
             
-            # Try parsing as JSON if it's a string
+            # Parse JSON if it's a string
             if isinstance(content, str):
                 try:
                     import json
@@ -67,7 +80,7 @@ class AIHelper:
             
             # Validate against our Pydantic model
             try:
-                validated_suggestions = AnalysisSuggestions(**suggestions)
+                validated_suggestions = AnalysisSuggestions.model_validate(suggestions)
                 st.write("Validated suggestions:", validated_suggestions)
                 return validated_suggestions.model_dump()
             except Exception as e:
@@ -87,6 +100,7 @@ class ExcelProcessor:
         self.column_history = []
         self.rule_history = []
         self.selected_rows = None
+        self.suggestions = None
     
     def load_excel(self, file):
         """Load Excel file into DataFrame"""
@@ -152,7 +166,8 @@ class ExcelProcessor:
             self.ai_helper = AIHelper()
         
         columns = self.get_column_names()
-        return self.ai_helper.get_suggestions(query, columns)
+        self.suggestions = self.ai_helper.get_suggestions(query, columns)
+        return self.suggestions
 
 def main():
     st.set_page_config(
@@ -205,26 +220,34 @@ def main():
             if st.button("Get AI Suggestions"):
                 if user_query:
                     suggestions = st.session_state.processor.suggest_operations(user_query)
-                    
-                    # Show Derived Column Suggestions
-                    if suggestions["derived_columns"]:
-                        st.subheader("Suggested Derived Columns")
-                        for idx, col in enumerate(suggestions["derived_columns"]):
-                            with st.expander(f"{col['name']}: {col['description']}"):
-                                st.write(f"Formula: `{col['formula']}`")
-                                if st.button("Apply This Column", key=f"col_{idx}"):
-                                    if st.session_state.processor.add_derived_column(col['name'], col['formula']):
-                                        st.success(f"Added column: {col['name']}")
-                    
-                    # Show Flag Rule Suggestions
-                    if suggestions["flag_rules"]:
-                        st.subheader("Suggested Flag Rules")
-                        for idx, flag in enumerate(suggestions["flag_rules"]):
-                            with st.expander(f"Flag: {flag['description']}"):
-                                st.write(f"Rule: `{flag['rule']}`")
-                                if st.button("Apply This Rule", key=f"flag_{idx}"):
-                                    if st.session_state.processor.add_flag_rule(flag['rule']):
-                                        st.success(f"Added flag rule: {flag['rule']}")
+                    # Store suggestions in session state
+                    st.session_state.suggestions = suggestions
+            
+            # Show suggestions if they exist in session state
+            if hasattr(st.session_state, 'suggestions') and st.session_state.suggestions:
+                suggestions = st.session_state.suggestions
+                
+                # Show Derived Column Suggestions
+                if suggestions.get("derived_columns"):
+                    st.subheader("Suggested Derived Columns")
+                    for idx, col in enumerate(suggestions["derived_columns"]):
+                        with st.expander(f"{col['name']}: {col['description']}"):
+                            st.write(f"Formula: `{col['formula']}`")
+                            if st.button("Apply This Column", key=f"col_{idx}"):
+                                if st.session_state.processor.add_derived_column(col['name'], col['formula']):
+                                    st.success(f"Added column: {col['name']}")
+                
+                # Show Flag Rule Suggestions
+                if suggestions.get("flag_rules"):
+                    st.subheader("Suggested Flag Rules")
+                    for idx, flag in enumerate(suggestions["flag_rules"]):
+                        with st.expander(f"Flag: {flag['description']}"):
+                            st.write(f"Rule: `{flag['rule']}`")
+                            if st.button("Apply This Rule", key=f"flag_{idx}"):
+                                if st.session_state.processor.add_flag_rule(flag['rule']):
+                                    st.success(f"Added flag rule: {flag['rule']}")
+                                    # Force refresh the display
+                                    st.experimental_rerun()
             
             # Derived Columns Section
             st.header("2. Create Derived Columns")
