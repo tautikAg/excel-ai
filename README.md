@@ -4,6 +4,10 @@ A powerful Streamlit-based application for processing Excel files with AI-powere
 
 ## System Design Doc:
 [System Design Document](https://docs.google.com/document/d/1GPcOYBDlOM6ZyYZLHkt7jJ1CWcIAbjOxqd4Qt-6rPy4/edit?usp=sharing)
+![image](https://github.com/user-attachments/assets/eecc800f-4e71-401d-9f48-a26a8439caa6)
+![Screenshot 2025-02-18 at 9 26 58 PM](https://github.com/user-attachments/assets/1a2ad2c3-14cf-49c9-9a51-cbc4c444fafa)
+![Screenshot 2025-02-18 at 9 27 17 PM](https://github.com/user-attachments/assets/88aba06a-eb45-4f60-a865-ce3ca12ce781)
+![Screenshot 2025-02-18 at 9 27 27 PM](https://github.com/user-attachments/assets/da836fc2-39ea-4008-af35-eb733c61ed40)
 
 ## 🌟 Features
 
