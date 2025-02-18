@@ -246,8 +246,8 @@ def main():
                             if st.button("Apply This Rule", key=f"flag_{idx}"):
                                 if st.session_state.processor.add_flag_rule(flag['rule']):
                                     st.success(f"Added flag rule: {flag['rule']}")
-                                    # Force refresh the display
-                                    st.experimental_rerun()
+                                    # Use st.rerun() instead of experimental_rerun
+                                    st.rerun()
             
             # Derived Columns Section
             st.header("2. Create Derived Columns")
